@@ -424,6 +424,44 @@
             margin-bottom: 15px;
         }
 
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .charts-container {
@@ -885,6 +923,17 @@
         </main>
     </div>
 
+    <!-- Ticket Details Modal -->
+    <div id="ticketModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeTicketModal()">&times;</span>
+            <h2>Ticket Details</h2>
+            <div id="ticketDetailsContent" style="margin-top: 20px;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
     <script>
         let CONFIG = { subdomain: '', email: '', apiToken: '' };
         let allTickets = [];
@@ -913,6 +962,21 @@
                 dateRangeSelector.addEventListener('change', function() {
                     updateReportsCharts();
                 });
+            }
+
+            // Problems view filters
+            const problemSearch = document.getElementById('problemSearch');
+            const problemStatusFilter = document.getElementById('problemStatusFilter');
+            const problemPriorityFilter = document.getElementById('problemPriorityFilter');
+            
+            if (problemSearch) {
+                problemSearch.addEventListener('input', filterProblems);
+            }
+            if (problemStatusFilter) {
+                problemStatusFilter.addEventListener('change', filterProblems);
+            }
+            if (problemPriorityFilter) {
+                problemPriorityFilter.addEventListener('change', filterProblems);
             }
         }
 
@@ -1019,13 +1083,39 @@
         }
 
         function updateProblemsView() {
+            filterProblems();
+        }
+
+        function filterProblems() {
             const tbody = document.getElementById('problemsTableBody');
+            if (!tbody) return;
+            
             if (allTickets.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No tickets found</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = allTickets.map(t => `
+            const searchTerm = document.getElementById('problemSearch')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('problemStatusFilter')?.value || '';
+            const priorityFilter = document.getElementById('problemPriorityFilter')?.value || '';
+
+            let filtered = allTickets.filter(t => {
+                const matchesSearch = !searchTerm || 
+                    t.id.toString().includes(searchTerm) ||
+                    t.subject.toLowerCase().includes(searchTerm);
+                
+                const matchesStatus = !statusFilter || t.status === statusFilter;
+                const matchesPriority = !priorityFilter || t.priority === priorityFilter;
+
+                return matchesSearch && matchesStatus && matchesPriority;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No tickets match the filters</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(t => `
                 <tr>
                     <td>#${t.id}</td>
                     <td>${t.subject}</td>
@@ -1033,7 +1123,7 @@
                     <td><span class="priority-${t.priority || 'normal'}">${t.priority || 'normal'}</span></td>
                     <td>${new Date(t.created_at).toLocaleDateString()}</td>
                     <td>${new Date(t.updated_at).toLocaleDateString()}</td>
-                    <td><button class="action-btn">View</button></td>
+                    <td><button class="action-btn" onclick="viewTicketDetails(${t.id})">View</button></td>
                 </tr>
             `).join('');
         }
@@ -1046,6 +1136,27 @@
                 const today = new Date().toDateString();
                 return new Date(t.updated_at).toDateString() === today && t.status === 'solved';
             }).length;
+
+            // Update incidents table
+            const tbody = document.getElementById('incidentsTableBody');
+            if (!tbody) return;
+
+            if (incidents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No incidents found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = incidents.slice(0, 20).map(t => `
+                <tr>
+                    <td>#${t.id}</td>
+                    <td>${t.subject}</td>
+                    <td><span class="status-badge status-${t.status}">${t.status}</span></td>
+                    <td><span class="priority-${t.priority || 'normal'}">${t.priority || 'normal'}</span></td>
+                    <td>${t.problem_id ? '#' + t.problem_id : 'None'}</td>
+                    <td>${new Date(t.created_at).toLocaleDateString()}</td>
+                    <td><button class="action-btn" onclick="viewTicketDetails(${t.id})">View</button></td>
+                </tr>
+            `).join('');
         }
 
         function initializeCharts() {
@@ -1317,6 +1428,60 @@
             if (elem) {
                 elem.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
             }
+        }
+
+        // View ticket details in modal
+        function viewTicketDetails(ticketId) {
+            const ticket = allTickets.find(t => t.id === ticketId);
+            if (!ticket) {
+                alert('Ticket not found');
+                return;
+            }
+
+            const modal = document.getElementById('ticketModal');
+            const content = document.getElementById('ticketDetailsContent');
+            
+            content.innerHTML = `
+                <div style="line-height: 2;">
+                    <p><strong>Ticket ID:</strong> #${ticket.id}</p>
+                    <p><strong>Subject:</strong> ${ticket.subject}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${ticket.status}">${ticket.status}</span></p>
+                    <p><strong>Priority:</strong> <span class="priority-${ticket.priority || 'normal'}">${ticket.priority || 'normal'}</span></p>
+                    <p><strong>Type:</strong> ${ticket.type || 'N/A'}</p>
+                    <p><strong>Requester ID:</strong> ${ticket.requester_id}</p>
+                    <p><strong>Assignee ID:</strong> ${ticket.assignee_id || 'Unassigned'}</p>
+                    <p><strong>Created:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
+                    <p><strong>Updated:</strong> ${new Date(ticket.updated_at).toLocaleString()}</p>
+                    <hr style="margin: 20px 0; border: 1px solid #e0e0e0;">
+                    <p><strong>Description:</strong></p>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px; white-space: pre-wrap;">
+                        ${ticket.description || 'No description available'}
+                    </div>
+                    ${ticket.tags && ticket.tags.length > 0 ? `
+                        <p style="margin-top: 15px;"><strong>Tags:</strong> ${ticket.tags.map(tag => `<span style="background: #e0e0e0; padding: 4px 8px; border-radius: 4px; margin-right: 5px; font-size: 12px;">${tag}</span>`).join('')}</p>
+                    ` : ''}
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        // Close ticket modal
+        function closeTicketModal() {
+            document.getElementById('ticketModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('ticketModal');
+            if (event.target === modal) {
+                closeTicketModal();
+            }
+        }
+
+        // Export report functionality
+        function exportReport() {
+            alert('Export functionality coming soon! You can take a screenshot for now.');
         }
     </script>
 </body>
