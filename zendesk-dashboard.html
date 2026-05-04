@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zendesk Problem Management Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .dashboard-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .metrics-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .metric-icon {
+            font-size: 40px;
+        }
+
+        .metric-info h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-card h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .controls-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filters select {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .tickets-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tickets-section h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-new { background: #e3f2fd; color: #1976d2; }
+        .status-open { background: #fff3e0; color: #f57c00; }
+        .status-pending { background: #fce4ec; color: #c2185b; }
+        .status-solved { background: #e8f5e9; color: #388e3c; }
+        .status-closed { background: #eceff1; color: #607d8b; }
+
+        .priority-urgent { color: #d32f2f; font-weight: bold; }
+        .priority-high { color: #f57c00; font-weight: bold; }
+        .priority-normal { color: #1976d2; }
+        .priority-low { color: #757575; }
+
+        .action-btn {
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .action-btn:hover {
+            background: #5568d3;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 700px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        #lastUpdated {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .config-section {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .config-section h3 {
+            margin-bottom: 15px;
+            color: #856404;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .config-section button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .config-section button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>🎫 Problem Management Dashboard</h1>
+            <div class="header-actions">
+                <button id="refreshBtn" class="btn btn-primary">
+                    <span>🔄</span> Refresh
+                </button>
+                <div class="user-info">
+                    <span id="lastUpdated">Last updated: --</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="config-section" id="configSection">
+            <h3>⚙️ Zendesk API Configuration</h3>
+            <p style="margin-bottom: 15px; color: #856404;">Enter your Zendesk credentials to load tickets:</p>
+            <input type="text" id="subdomain" placeholder="Zendesk Subdomain (e.g., mycompany)">
+            <input type="email" id="email" placeholder="Your Email">
+            <input type="password" id="apiToken" placeholder="API Token">
+            <button onclick="saveConfig()">Save Configuration & Load Tickets</button>
+        </section>
+
+        <section class="metrics-section">
+            <div class="metric-card">
+                <div class="metric-icon">🎫</div>
+                <div class="metric-info">
+                    <h3>Total Tickets</h3>
+                    <p class="metric-value" id="totalTickets">0</p>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">🔴</div>
+                <div class="metric-info">
+                    <h3>Open Tickets</h3>
+                    <p class="metric-value" id="openTickets">0</p>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">⏳</div>
+                <div class="metric-info">
+                    <h3>Pending</h3>
+                    <p class="metric-value" id="pendingTickets">0</p>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">✅</div>
+                <div class="metric-info">
+                    <h3>Solved</h3>
+                    <p class="metric-value" id="solvedTickets">0</p>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">⚠️</div>
+                <div class="metric-info">
+                    <h3>High Priority</h3>
+                    <p class="metric-value" id="highPriorityTickets">0</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="charts-section">
+            <div class="chart-card">
+                <h3>Tickets by Status</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Tickets by Priority</h3>
+                <canvas id="priorityChart"></canvas>
+            </div>
+        </section>
+
+        <section class="controls-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 Search tickets by ID, subject, or requester...">
+            </div>
+            <div class="filters">
+                <select id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="new">New</option>
+                    <option value="open">Open</option>
+                    <option value="pending">Pending</option>
+                    <option value="solved">Solved</option>
+                    <option value="closed">Closed</option>
+                </select>
+                <select id="priorityFilter">
+                    <option value="">All Priorities</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="normal">Normal</option>
+                    <option value="low">Low</option>
+                </select>
+                <select id="sortBy">
+                    <option value="created_desc">Newest First</option>
+                    <option value="created_asc">Oldest First</option>
+                    <option value="updated_desc">Recently Updated</option>
+                    <option value="priority_desc">Priority (High to Low)</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="tickets-section">
+            <h2>Tickets Overview</h2>
+            <div class="table-container">
+                <table id="ticketsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Subject</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Requester</th>
+                            <th>Assignee</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticketsTableBody">
+                        <tr>
+                            <td colspan="9" class="no-data">Configure your Zendesk credentials above to load tickets...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div id="ticketModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Ticket Details</h2>
+            <div id="ticketDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        let CONFIG = { subdomain: '', email: '', apiToken: '' };
+        let allTickets = [];
+        let statusChart = null;
+        let priorityChart = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            setupEventListeners();
+            loadConfigFromStorage();
+        });
+
+        function loadConfigFromStorage() {
+            const savedConfig = localStorage.getItem('zendeskConfig');
+            if (savedConfig) {
+                CONFIG = JSON.parse(savedConfig);
+                document.getElementById('subdomain').value = CONFIG.subdomain;
+                document.getElementById('email').value = CONFIG.email;
+                document.getElementById('apiToken').value = CONFIG.apiToken;
+                document.getElementById('configSection').style.display = 'none';
+                loadTickets();
+            }
+        }
+
+        function saveConfig() {
+            CONFIG = {
+                subdomain: document.getElementById('subdomain').value,
+                email: document.getElementById('email').value,
+                apiToken: document.getElementById('apiToken').value
+            };
+
+            if (!CONFIG.subdomain || !CONFIG.email || !CONFIG.apiToken) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            localStorage.setItem('zendeskConfig', JSON.stringify(CONFIG));
+            document.getElementById('configSection').style.display = 'none';
+            loadTickets();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('refreshBtn').addEventListener('click', loadTickets);
+            document.getElementById('searchInput').addEventListener('input', filterAndDisplayTickets);
+            document.getElementById('statusFilter').addEventListener('change', filterAndDisplayTickets);
+            document.getElementById('priorityFilter').addEventListener('change', filterAndDisplayTickets);
+            document.getElementById('sortBy').addEventListener('change', filterAndDisplayTickets);
+            
+            document.querySelector('.close').addEventListener('click', closeModal);
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('ticketModal');
+                if (event.target === modal) closeModal();
+            });
+        }
+
+        async function loadTickets() {
+            if (!CONFIG.subdomain || !CONFIG.email || !CONFIG.apiToken) return;
+
+            try {
+                // Use proxy server instead of direct API call
+                const response = await fetch('http://localhost:3000/api/tickets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        subdomain: CONFIG.subdomain,
+                        email: CONFIG.email,
+                        apiToken: CONFIG.apiToken
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch tickets');
+                }
+
+                const data = await response.json();
+                allTickets = data.tickets;
+                
+                updateMetrics();
+                updateCharts();
+                filterAndDisplayTickets();
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error loading tickets:', error);
+                document.getElementById('ticketsTableBody').innerHTML = 
+                    '<tr><td colspan="9" class="no-data">Error loading tickets. Please check your API credentials and ensure the server is running.</td></tr>';
+            }
+        }
+
+        function updateMetrics() {
+            const metrics = {
+                total: allTickets.length,
+                open: allTickets.filter(t => t.status === 'open').length,
+                pending: allTickets.filter(t => t.status === 'pending').length,
+                solved: allTickets.filter(t => t.status === 'solved').length,
+                highPriority: allTickets.filter(t => t.priority === 'high' || t.priority === 'urgent').length
+            };
+
+            document.getElementById('totalTickets').textContent = metrics.total;
+            document.getElementById('openTickets').textContent = metrics.open;
+            document.getElementById('pendingTickets').textContent = metrics.pending;
+            document.getElementById('solvedTickets').textContent = metrics.solved;
+            document.getElementById('highPriorityTickets').textContent = metrics.highPriority;
+        }
+
+        function initializeCharts() {
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#2196F3', '#FF9800', '#E91E63', '#4CAF50', '#607D8B']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+
+            const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+            priorityChart = new Chart(priorityCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Tickets',
+                        data: [],
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            const statusCounts = {};
+            allTickets.forEach(ticket => {
+                statusCounts[ticket.status] = (statusCounts[ticket.status] || 0) + 1;
+            });
+
+            statusChart.data.labels = Object.keys(statusCounts);
+            statusChart.data.datasets[0].data = Object.values(statusCounts);
+            statusChart.update();
+
+            const priorityCounts = {};
+            allTickets.forEach(ticket => {
+                const priority = ticket.priority || 'normal';
+                priorityCounts[priority] = (priorityCounts[priority] || 0) + 1;
+            });
+
+            priorityChart.data.labels = Object.keys(priorityCounts);
+            priorityChart.data.datasets[0].data = Object.values(priorityCounts);
+            priorityChart.update();
+        }
+
+        function filterAndDisplayTickets() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            let filteredTickets = allTickets.filter(ticket => {
+                const matchesSearch = !searchTerm || 
+                    ticket.id.toString().includes(searchTerm) ||
+                    ticket.subject.toLowerCase().includes(searchTerm) ||
+                    (ticket.requester_id && ticket.requester_id.toString().includes(searchTerm));
+                
+                const matchesStatus = !statusFilter || ticket.status === statusFilter;
+                const matchesPriority = !priorityFilter || ticket.priority === priorityFilter;
+
+                return matchesSearch && matchesStatus && matchesPriority;
+            });
+
+            filteredTickets.sort((a, b) => {
+                switch(sortBy) {
+                    case 'created_desc': return new Date(b.created_at) - new Date(a.created_at);
+                    case 'created_asc': return new Date(a.created_at) - new Date(b.created_at);
+                    case 'updated_desc': return new Date(b.updated_at) - new Date(a.updated_at);
+                    case 'priority_desc':
+                        const priorityOrder = { urgent: 4, high: 3, normal: 2, low: 1 };
+                        return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+                    default: return 0;
+                }
+            });
+
+            displayTickets(filteredTickets);
+        }
+
+        function displayTickets(tickets) {
+            const tbody = document.getElementById('ticketsTableBody');
+            
+            if (tickets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="no-data">No tickets found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = tickets.map(ticket => `
+                <tr>
+                    <td>#${ticket.id}</td>
+                    <td>${ticket.subject}</td>
+                    <td><span class="status-badge status-${ticket.status}">${ticket.status}</span></td>
+                    <td><span class="priority-${ticket.priority || 'normal'}">${ticket.priority || 'normal'}</span></td>
+                    <td>ID: ${ticket.requester_id}</td>
+                    <td>${ticket.assignee_id ? 'ID: ' + ticket.assignee_id : 'Unassigned'}</td>
+                    <td>${formatDate(ticket.created_at)}</td>
+                    <td>${formatDate(ticket.updated_at)}</td>
+                    <td><button class="action-btn" onclick="viewTicket(${ticket.id})">View</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function viewTicket(ticketId) {
+            const ticket = allTickets.find(t => t.id === ticketId);
+            if (!ticket) return;
+
+            const detailsHtml = `
+                <div style="line-height: 1.8;">
+                    <p><strong>Ticket ID:</strong> #${ticket.id}</p>
+                    <p><strong>Subject:</strong> ${ticket.subject}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${ticket.status}">${ticket.status}</span></p>
+                    <p><strong>Priority:</strong> <span class="priority-${ticket.priority || 'normal'}">${ticket.priority || 'normal'}</span></p>
+                    <p><strong>Type:</strong> ${ticket.type || 'N/A'}</p>
+                    <p><strong>Requester ID:</strong> ${ticket.requester_id}</p>
+                    <p><strong>Assignee ID:</strong> ${ticket.assignee_id || 'Unassigned'}</p>
+                    <p><strong>Created:</strong> ${formatDate(ticket.created_at)}</p>
+                    <p><strong>Updated:</strong> ${formatDate(ticket.updated_at)}</p>
+                    <p><strong>Description:</strong></p>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 10px;">
+                        ${ticket.description || 'No description available'}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('ticketDetails').innerHTML = detailsHtml;
+            document.getElementById('ticketModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('ticketModal').style.display = 'none';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+    </script>
+</body>
+</html>

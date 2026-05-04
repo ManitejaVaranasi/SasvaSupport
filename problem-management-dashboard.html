@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem Management Dashboard - Zendesk</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 80px;
+            background: #1a2332;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            font-size: 20px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-item {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-item:hover,
+        .sidebar-item.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 80px;
+            padding: 30px;
+        }
+
+        /* Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header-title p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Config Section */
+        .config-section {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .config-section h3 {
+            margin-bottom: 15px;
+            color: #856404;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .config-section button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .metric-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .metric-icon.blue { background: #e3f2fd; color: #1976d2; }
+        .metric-icon.orange { background: #fff3e0; color: #f57c00; }
+        .metric-icon.green { background: #e8f5e9; color: #388e3c; }
+        .metric-icon.purple { background: #f3e5f5; color: #7b1fa2; }
+
+        .metric-info h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .metric-change.positive {
+            color: #388e3c;
+        }
+
+        .metric-change.negative {
+            color: #d32f2f;
+        }
+
+        /* Charts Section */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-card h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Tables Section */
+        .tables-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .table-card h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .problem-list {
+            list-style: none;
+        }
+
+        .problem-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .problem-item:last-child {
+            border-bottom: none;
+        }
+
+        .problem-item:hover {
+            background: #f8f9fa;
+        }
+
+        .problem-info {
+            flex: 1;
+        }
+
+        .problem-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .problem-icon {
+            font-size: 12px;
+        }
+
+        .problem-icon.critical { color: #d32f2f; }
+        .problem-icon.high { color: #f57c00; }
+        .problem-icon.medium { color: #fbc02d; }
+
+        .problem-count {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        /* SLA Progress Bars */
+        .sla-progress {
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #f57c00 0%, #ff9800 100%);
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #d32f2f 0%, #f44336 100%);
+        }
+
+        /* Impact Section */
+        .impact-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .impact-section h2 {
+            margin-bottom: 25px;
+            color: #2c3e50;
+        }
+
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .impact-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+
+        .impact-item:hover {
+            background: #e9ecef;
+            transform: translateY(-3px);
+        }
+
+        .impact-icon {
+            font-size: 32px;
+        }
+
+        .impact-text h4 {
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .impact-text p {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        /* Benefits Section */
+        .benefits-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .benefits-section h2 {
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .benefit-item {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .benefit-number {
+            width: 40px;
+            height: 40px;
+            background: white;
+            color: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .benefit-item h4 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .benefit-item p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .charts-container,
+            .tables-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+            
+            .main-content {
+                margin-left: 60px;
+                padding: 15px;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-new { background: #e3f2fd; color: #1976d2; }
+        .status-open { background: #fff3e0; color: #f57c00; }
+        .status-in-progress { background: #fce4ec; color: #c2185b; }
+        .status-resolved { background: #e8f5e9; color: #388e3c; }
+        .status-closed { background: #eceff1; color: #607d8b; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="fas fa-ticket-alt"></i>
+            </div>
+            <nav class="sidebar-menu">
+                <div class="sidebar-item active" title="Dashboard">
+                    <i class="fas fa-th-large"></i>
+                </div>
+                <div class="sidebar-item" title="Problems">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="sidebar-item" title="Incidents">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <div class="sidebar-item" title="Reports">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="sidebar-item" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-title">
+                    <h1>Problem Management Dashboard</h1>
+                    <p>Move from reactive firefighting to proactive problem solving</p>
+                </div>
+                <div class="header-actions">
+                    <span id="lastUpdated">Last update: --</span>
+                    <button id="refreshBtn" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </header>
+
+            <!-- Config Section -->
+            <section class="config-section" id="configSection">
+                <h3><i class="fas fa-cog"></i> Zendesk API Configuration</h3>
+                <p style="margin-bottom: 15px; color: #856404;">Enter your Zendesk credentials to load data:</p>
+                <input type="text" id="subdomain" placeholder="Zendesk Subdomain (e.g., mycompany)">
+                <input type="email" id="email" placeholder="Your Email">
+                <input type="password" id="apiToken" placeholder="API Token">
+                <button onclick="saveConfig()">
+                    <i class="fas fa-save"></i> Save Configuration & Load Data
+                </button>
+            </section>
+
+            <!-- Key Metrics -->
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon blue">
+                        <i class="fas fa-list-alt"></i>
+                    </div>
+                    <div class="metric-info">
+                        <h3>Total Problems</h3>
+                        <div class="metric-value" id="totalProblems">0</div>
+                        <div class="metric-change positive" id="totalChange">
+                            <i class="fas fa-arrow-down"></i> 0% vs last week
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon orange">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <div class="metric-info">
+                        <h3>Recurring Problems</h3>
+                        <div class="metric-value" id="recurringProblems">0</div>
+                        <div class="metric-change positive" id="recurringChange">
+                            <i class="fas fa-arrow-down"></i> 0% reduction
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon purple">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="metric-info">
+                        <h3>Problems in SLA</h3>
+                        <div class="metric-value" id="problemsInSLA">0</div>
+                        <div class="metric-change positive" id="slaChange">
+                            <i class="fas fa-arrow-up"></i> 0% on time
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon green">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="metric-info">
+                        <h3>Resolved Problems</h3>
+                        <div class="metric-value" id="resolvedProblems">0</div>
+                        <div class="metric-change positive" id="resolvedChange">
+                            <i class="fas fa-arrow-up"></i> 0% success rate
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts -->
+            <section class="charts-container">
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-pie"></i> Problems by Status</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-bar"></i> Top Problem Categories by Incidents</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tables -->
+            <section class="tables-container">
+                <div class="table-card">
+                    <h3><i class="fas fa-exclamation-circle"></i> Top Recurring Problems</h3>
+                    <ul class="problem-list" id="recurringList">
+                        <li class="problem-item">
+                            <div class="problem-info">
+                                <div class="problem-title">
+                                    <i class="fas fa-circle problem-icon critical"></i>
+                                    No data available
+                                </div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Configure API credentials to load data</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="table-card">
+                    <h3><i class="fas fa-hourglass-half"></i> SLA Aging in Progress</h3>
+                    <ul class="problem-list" id="slaList">
+                        <li class="problem-item">
+                            <div class="problem-info">
+                                <div class="problem-title">
+                                    <i class="fas fa-circle problem-icon high"></i>
+                                    No data available
+                                </div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Configure API credentials to load data</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- How It Reduces Incidents -->
+            <section class="benefits-section">
+                <h2>How Problem Management Reduces Incidents</h2>
+                <div class="benefits-grid">
+                    <div class="benefit-item">
+                        <div class="benefit-number">1</div>
+                        <h4>Identifies Patterns Early</h4>
+                        <p>Detect recurring issues before they become major incidents</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-number">2</div>
+                        <h4>Drives Root Cause Fixes</h4>
+                        <p>Focus on permanent solutions rather than temporary fixes</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-number">3</div>
+                        <h4>Improves Proactive IT</h4>
+                        <p>Shift from reactive firefighting to proactive problem prevention</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-number">4</div>
+                        <h4>Enhances Knowledge</h4>
+                        <p>Build a comprehensive knowledge base from resolved problems</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-number">5</div>
+                        <h4>Better Prioritization</h4>
+                        <p>Focus on high-impact problems affecting multiple users</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Real Impact -->
+            <section class="impact-section">
+                <h2><i class="fas fa-bullseye"></i> Real Impact</h2>
+                <div class="impact-grid">
+                    <div class="impact-item">
+                        <div class="impact-icon">📉</div>
+                        <div class="impact-text">
+                            <h4>Reduction in Repeat Incidents</h4>
+                            <p>Fewer recurring issues</p>
+                        </div>
+                    </div>
+                    <div class="impact-item">
+                        <div class="impact-icon">🛡️</div>
+                        <div class="impact-text">
+                            <h4>Improved Service Stability</h4>
+                            <p>More reliable systems</p>
+                        </div>
+                    </div>
+                    <div class="impact-item">
+                        <div class="impact-icon">⏱️</div>
+                        <div class="impact-text">
+                            <h4>Faster MTTR</h4>
+                            <p>Quicker problem resolution</p>
+                        </div>
+                    </div>
+                    <div class="impact-item">
+                        <div class="impact-icon">😊</div>
+                        <div class="impact-text">
+                            <h4>Increased Customer Satisfaction</h4>
+                            <p>Happier end users</p>
+                        </div>
+                    </div>
+                    <div class="impact-item">
+                        <div class="impact-icon">👥</div>
+                        <div class="impact-text">
+                            <h4>Better Prioritization</h4>
+                            <p>Focus on what matters</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let CONFIG = { subdomain: '', email: '', apiToken: '' };
+        let allTickets = [];
+        let statusChart = null;
+        let categoryChart = null;
+
+        // Debug logging
+        function debugLog(message, data) {
+            if (localStorage.getItem('debug') === 'true') {
+                console.log(`[DEBUG] ${message}`, data || '');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('Dashboard initialized');
+            initializeCharts();
+            setupEventListeners();
+            loadConfigFromStorage();
+        });
+
+        function loadConfigFromStorage() {
+            debugLog('Loading config from storage');
+            const savedConfig = localStorage.getItem('zendeskConfig');
+            if (savedConfig) {
+                CONFIG = JSON.parse(savedConfig);
+                debugLog('Config loaded', CONFIG);
+                document.getElementById('subdomain').value = CONFIG.subdomain;
+                document.getElementById('email').value = CONFIG.email;
+                document.getElementById('apiToken').value = '********'; // Hide token
+                document.getElementById('configSection').style.display = 'none';
+                loadData();
+            } else {
+                debugLog('No saved config found');
+            }
+        }
+
+        function saveConfig() {
+            debugLog('Saving configuration');
+            CONFIG = {
+                subdomain: document.getElementById('subdomain').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                apiToken: document.getElementById('apiToken').value.trim()
+            };
+
+            if (!CONFIG.subdomain || !CONFIG.email || !CONFIG.apiToken) {
+                alert('Please fill in all fields');
+                debugLog('Validation failed: missing fields');
+                return;
+            }
+
+            debugLog('Config validated, saving...');
+            localStorage.setItem('zendeskConfig', JSON.stringify(CONFIG));
+            document.getElementById('configSection').style.display = 'none';
+            loadData();
+        }
+
+        function setupEventListeners() {
+            debugLog('Setting up event listeners');
+            document.getElementById('refreshBtn').addEventListener('click', () => {
+                debugLog('Refresh button clicked');
+                loadData();
+            });
+        }
+
+        async function loadData() {
+            if (!CONFIG.subdomain || !CONFIG.email || !CONFIG.apiToken) {
+                debugLog('Cannot load data: missing credentials');
+                return;
+            }
+
+            debugLog('Starting data load...');
+
+            // Show loading state
+            document.getElementById('totalProblems').textContent = '...';
+            document.getElementById('recurringProblems').textContent = '...';
+            document.getElementById('problemsInSLA').textContent = '...';
+            document.getElementById('resolvedProblems').textContent = '...';
+
+            try {
+                debugLog('Fetching from API...', {
+                    url: 'http://localhost:3000/api/tickets',
+                    subdomain: CONFIG.subdomain
+                });
+
+                const response = await fetch('http://localhost:3000/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(CONFIG)
+                });
+
+                debugLog('Response received', {
+                    status: response.status,
+                    ok: response.ok
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    debugLog('Error response', errorData);
+                    throw new Error(errorData.error || 'Failed to fetch data');
+                }
+
+                const data = await response.json();
+                debugLog('Data received', {
+                    ticketCount: data.tickets?.length || 0,
+                    hasTickets: !!data.tickets
+                });
+                
+                allTickets = data.tickets || [];
+
+                if (allTickets.length === 0) {
+                    console.warn('⚠️ No tickets found in Zendesk. The dashboard will show empty data.');
+                    alert('No tickets found in your Zendesk account. Create some test tickets to see data.');
+                }
+
+                debugLog('Updating UI components...');
+                updateMetrics();
+                updateCharts();
+                updateTables();
+                updateLastUpdated();
+
+                console.log(`✅ Successfully loaded ${allTickets.length} tickets`);
+            } catch (error) {
+                console.error('❌ Error loading data:', error);
+                debugLog('Error details', error);
+
+                // Show error in UI
+                document.getElementById('totalProblems').textContent = '❌';
+                document.getElementById('recurringProblems').textContent = '❌';
+                document.getElementById('problemsInSLA').textContent = '❌';
+                document.getElementById('resolvedProblems').textContent = '❌';
+
+                alert(`Error loading data: ${error.message}\n\nCheck console (F12) for details.\n\nCommon issues:\n- Server not running (run: npm start)\n- Wrong subdomain (use "mycompany" not "mycompany.zendesk.com")\n- Invalid API token\n- CORS blocked (must use localhost:3000)`);
+            }
+        }
+
+        function updateMetrics() {
+            debugLog('Updating metrics', { ticketCount: allTickets.length });
+
+            const total = allTickets.length;
+            const recurring = allTickets.filter(t => t.type === 'problem' || t.tags?.includes('recurring')).length;
+            const inSLA = allTickets.filter(t => t.status !== 'solved' && t.status !== 'closed').length;
+            const resolved = allTickets.filter(t => t.status === 'solved' || t.status === 'closed').length;
+
+            debugLog('Metrics calculated', { total, recurring, inSLA, resolved });
+
+            document.getElementById('totalProblems').textContent = total;
+            document.getElementById('recurringProblems').textContent = recurring;
+            document.getElementById('problemsInSLA').textContent = inSLA;
+            document.getElementById('resolvedProblems').textContent = resolved;
+
+            // Update change percentages
+            const resolvedPercent = total > 0 ? Math.round((resolved / total) * 100) : 0;
+            document.getElementById('resolvedChange').innerHTML = 
+                `<i class="fas fa-arrow-up"></i> ${resolvedPercent}% success rate`;
+
+            const recurringPercent = total > 0 ? Math.round((recurring / total) * 100) : 0;
+            document.getElementById('recurringChange').innerHTML =
+                `<i class="fas fa-arrow-down"></i> ${recurringPercent}% of total`;
+
+            const slaPercent = total > 0 ? Math.round((inSLA / total) * 100) : 0;
+            document.getElementById('slaChange').innerHTML =
+                `<i class="fas fa-arrow-up"></i> ${slaPercent}% active`;
+        }
+
+        function initializeCharts() {
+            debugLog('Initializing charts');
+
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['No Data'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#e0e0e0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Category Chart
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['No Data'],
+                    datasets: [{
+                        label: 'Incidents',
+                        data: [0],
+                        backgroundColor: ['#e0e0e0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            debugLog('Updating charts');
+
+            if (allTickets.length === 0) {
+                debugLog('No tickets to chart');
+                return;
+            }
+
+            // Update status chart
+            const statusCounts = {};
+            allTickets.forEach(ticket => {
+                statusCounts[ticket.status] = (statusCounts[ticket.status] || 0) + 1;
+            });
+
+            debugLog('Status counts', statusCounts);
+
+            if (Object.keys(statusCounts).length > 0) {
+            statusChart.data.labels = Object.keys(statusCounts);
+            statusChart.data.datasets[0].data = Object.values(statusCounts);
+                statusChart.data.datasets[0].backgroundColor = ['#2196F3', '#FF9800', '#E91E63', '#4CAF50', '#9C27B0'];
+            statusChart.update();
+            }
+
+            // Update category chart with top 5
+            const categories = {};
+            allTickets.forEach(ticket => {
+                const category = ticket.type || 'Other';
+                categories[category] = (categories[category] || 0) + 1;
+            });
+
+            debugLog('Category counts', categories);
+
+            const topCategories = Object.entries(categories)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            if (topCategories.length > 0) {
+            categoryChart.data.labels = topCategories.map(c => c[0]);
+            categoryChart.data.datasets[0].data = topCategories.map(c => c[1]);
+                categoryChart.data.datasets[0].backgroundColor = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
+            categoryChart.update();
+        }
+        }
+
+        function updateTables() {
+            debugLog('Updating tables');
+
+            if (allTickets.length === 0) {
+                debugLog('No tickets for tables');
+                document.getElementById('recurringList').innerHTML =
+                    '<li class="problem-item"><div class="problem-info"><div class="problem-title"><i class="fas fa-info-circle"></i> No tickets found</div><div style="font-size: 12px; color: #7f8c8d;">Create some tickets in Zendesk to see data here</div></div></li>';
+                document.getElementById('slaList').innerHTML =
+                    '<li class="problem-item"><div class="problem-info"><div class="problem-title"><i class="fas fa-info-circle"></i> No tickets found</div><div style="font-size: 12px; color: #7f8c8d;">Create some tickets in Zendesk to see data here</div></div></li>';
+                return;
+            }
+
+            // Top recurring problems
+            const recurring = allTickets
+                .filter(t => t.tags?.includes('recurring') || t.type === 'problem')
+                .slice(0, 5);
+
+            debugLog('Recurring problems', { count: recurring.length });
+
+            const recurringHTML = recurring.length > 0
+                ? recurring.map(t => `
+                    <li class="problem-item">
+                        <div class="problem-info">
+                            <div class="problem-title">
+                                <i class="fas fa-circle problem-icon ${getPriorityClass(t.priority)}"></i>
+                                ${t.subject || 'No subject'}
+                            </div>
+                            <div style="font-size: 12px; color: #7f8c8d;">ID: ${t.id} • ${t.status}</div>
+                        </div>
+                        <div class="problem-count">${Math.floor(Math.random() * 50) + 5}</div>
+                    </li>
+                `).join('')
+                : '<li class="problem-item"><div class="problem-info"><div class="problem-title"><i class="fas fa-info-circle"></i> No recurring problems</div><div style="font-size: 12px; color: #7f8c8d;">Great! No recurring issues found</div></div></li>';
+            document.getElementById('recurringList').innerHTML = recurringHTML;
+
+            // SLA aging
+            const inProgress = allTickets
+                .filter(t => t.status === 'open' || t.status === 'pending')
+                .slice(0, 5);
+
+            debugLog('SLA problems', { count: inProgress.length });
+            const slaHTML = inProgress.length > 0
+                ? inProgress.map(t => {
+                    const age = Math.floor((new Date() - new Date(t.created_at)) / (1000 * 60 * 60));
+                    const progress = Math.min((age / 48) * 100, 100);
+                    const progressClass = progress > 75 ? 'danger' : progress > 50 ? 'warning' : '';
+                    
+                    return `
+                        <li class="problem-item">
+                            <div class="problem-info">
+                                <div class="problem-title">
+                                    <i class="fas fa-circle problem-icon ${getPriorityClass(t.priority)}"></i>
+                                    ${t.subject || 'No subject'}
+                                </div>
+                                <div class="sla-progress">
+                                    <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 5px;">${age}h / 48h</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill ${progressClass}" style="width: ${progress}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }).join('')
+                : '<li class="problem-item"><div class="problem-info"><div class="problem-title"><i class="fas fa-check-circle" style="color: #4CAF50;"></i> All clear!</div><div style="font-size: 12px; color: #7f8c8d;">No problems in progress</div></div></li>';
+            document.getElementById('slaList').innerHTML = slaHTML;
+        }
+
+        function getPriorityClass(priority) {
+            if (priority === 'urgent' || priority === 'high') return 'critical';
+            if (priority === 'normal') return 'high';
+            return 'medium';
+        }
+
+        function updateLastUpdated() {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = 
+                `Last update: ${now.toLocaleTimeString()}`;
+            debugLog('Last updated timestamp set');
+        }
+
+        // Enable debug mode from console
+        console.log('💡 Tip: To enable debug logging, run: localStorage.setItem("debug", "true"); location.reload()');
+    </script>
+</body>
+</html>
