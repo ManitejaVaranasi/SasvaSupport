@@ -512,7 +512,7 @@
 
             try {
                 // Use proxy server instead of direct API call
-                const response = await fetch('http://localhost:3000/api/tickets', {
+                const response = await fetch('/api/tickets', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
